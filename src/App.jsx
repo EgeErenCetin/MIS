@@ -36,24 +36,24 @@ const LandingNav = () => {
 /* Reusable and modern Footer component */
 const Footer = ({ isLanding }) => {
   return (
-    <footer style={{ 
-      borderTop: '1px solid var(--color-border)', 
-      padding: '2rem 1rem', 
-      marginTop: 'auto', 
+    <footer style={{
+      borderTop: '1px solid var(--color-border)',
+      padding: '2rem 1rem',
+      marginTop: 'auto',
       background: isLanding ? 'rgba(255, 255, 255, 0.8)' : 'transparent',
       backdropFilter: isLanding ? 'blur(8px)' : 'none',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       width: '100%',
       boxSizing: 'border-box'
     }}>
-      <div style={{ 
-        maxWidth: isLanding ? '1280px' : '100%', 
-        margin: '0 auto', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        flexWrap: 'wrap', 
-        gap: '1rem' 
+      <div style={{
+        maxWidth: isLanding ? '1280px' : '100%',
+        margin: '0 auto',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1.2rem', letterSpacing: '-0.02em' }}>HAOS</span>
@@ -219,7 +219,7 @@ const Root = () => {
         <Route path="/health-portal" element={<Screen5HealthPortal />} />
         <Route path="/admin" element={<Screen6AdminDashboard />} />
         <Route path="/daily-schedule" element={<ReceptionDeskView />} />
-        
+
         {/* Support pages inside authenticated sidebar view */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />

@@ -21,12 +21,81 @@ const TIME_SLOTS = [
 ];
 
 const INITIAL_APPTS = {
-  'd1-09:00': { patient: 'Ahmet Yılmaz', phone: '+90 532 111 22 33', note: 'Rutin kontrol' },
-  'd1-10:30': { patient: 'Fatma Kaya', phone: '+90 541 222 33 44', note: 'Dolgu' },
-  'd2-09:30': { patient: 'Zeynep Arslan', phone: '+90 553 333 44 55', note: 'Tel takma' },
-  'd2-14:00': { patient: 'Emre Koç', phone: '+90 542 444 55 66', note: 'Braket kontrolü' },
-  'd3-11:00': { patient: 'Hasan Öztürk', phone: '+90 505 555 66 77', note: 'Seans' },
-  'd4-13:30': { patient: 'Merve Yıldız', phone: '+90 506 666 77 88', note: 'İlk görüşme' },
+  // Dr. Ayşe Smith — Diş Hekimliği
+  'd1-08:30': { patient: 'Ahmet Yılmaz',    phone: '+90 532 111 22 33', note: 'Rutin kontrol' },
+  'd1-09:00': { patient: 'Fatma Kaya',      phone: '+90 541 222 33 44', note: 'Dolgu tedavisi' },
+  'd1-09:30': { patient: 'Murat Şahin',     phone: '+90 533 100 10 10', note: 'Çekim' },
+  'd1-10:00': { patient: 'Elif Demir',      phone: '+90 544 200 20 20', note: 'Kanal tedavisi' },
+  'd1-10:30': { patient: 'Serkan Arslan',   phone: '+90 555 300 30 30', note: 'Protez ölçü' },
+  'd1-11:00': { patient: 'Aylin Çelik',     phone: '+90 506 400 40 40', note: 'Kontrol' },
+  'd1-11:30': { patient: 'Berk Güler',      phone: '+90 507 500 50 50', note: 'Temizlik' },
+  'd1-12:00': { patient: 'Seda Yıldız',     phone: '+90 538 600 60 60', note: 'Dolgu kontrolü' },
+  'd1-13:00': { patient: 'Okan Bulut',      phone: '+90 542 700 70 70', note: 'İlk muayene' },
+  'd1-13:30': { patient: 'Pınar Erdoğan',   phone: '+90 553 800 80 80', note: 'Beyazlatma' },
+  'd1-14:00': { patient: 'Tarık Koçak',     phone: '+90 505 900 90 90', note: 'Rutin kontrol' },
+  'd1-14:30': { patient: 'Yasemin Kara',    phone: '+90 530 111 11 11', note: 'Dolgu' },
+  'd1-15:00': { patient: 'Hüseyin Polat',   phone: '+90 536 222 22 22', note: 'Kanal' },
+  'd1-15:30': { patient: 'Neslihan Özcan',  phone: '+90 545 333 33 33', note: 'Kontrol' },
+  'd1-16:00': { patient: 'Caner Yavuz',     phone: '+90 554 444 44 44', note: 'Çekim' },
+  'd1-16:30': { patient: 'İrem Tunç',       phone: '+90 502 555 55 55', note: 'Protez kontrol' },
+  'd1-17:00': { patient: 'Volkan Aydın',    phone: '+90 537 666 66 66', note: 'Temizlik' },
+
+  // Dr. Mehmet Jones — Ortodonti
+  'd2-08:30': { patient: 'Zeynep Arslan',   phone: '+90 553 333 44 55', note: 'Tel takma' },
+  'd2-09:00': { patient: 'Emre Koç',        phone: '+90 542 444 55 66', note: 'Braket kontrolü' },
+  'd2-09:30': { patient: 'Deniz Kılıç',     phone: '+90 531 123 45 67', note: 'Retainer kontrolü' },
+  'd2-10:00': { patient: 'Gizem Acar',      phone: '+90 540 234 56 78', note: 'Tel sıkıştırma' },
+  'd2-10:30': { patient: 'Furkan Çetin',    phone: '+90 551 345 67 89', note: 'Braket düzeltme' },
+  'd2-11:00': { patient: 'Şeyma Toprak',    phone: '+90 504 456 78 90', note: 'Kontrol' },
+  'd2-11:30': { patient: 'Alper Korkmaz',   phone: '+90 535 567 89 01', note: 'Tel takma' },
+  'd2-12:00': { patient: 'Büşra Yılmaz',    phone: '+90 546 678 90 12', note: 'Son kontrol' },
+  'd2-13:00': { patient: 'Kaan Öztürk',     phone: '+90 557 789 01 23', note: 'Retainer' },
+  'd2-13:30': { patient: 'Simge Bozkurt',   phone: '+90 508 890 12 34', note: 'Braket çıkarma' },
+  'd2-14:00': { patient: 'Oğuz Demirci',    phone: '+90 533 901 23 45', note: 'Tel kontrolü' },
+  'd2-14:30': { patient: 'Tuğba Şen',       phone: '+90 544 012 34 56', note: 'Kontrol' },
+  'd2-15:00': { patient: 'Barış Çakır',     phone: '+90 555 123 45 67', note: 'Tel sıkıştırma' },
+  'd2-15:30': { patient: 'Merve Ateş',      phone: '+90 506 234 56 78', note: 'İlk muayene' },
+  'd2-16:00': { patient: 'Selim Özdemir',   phone: '+90 537 345 67 89', note: 'Retainer' },
+  'd2-16:30': { patient: 'Ebru Doğan',      phone: '+90 548 456 78 90', note: 'Braket kontrolü' },
+  'd2-17:00': { patient: 'Cem Yıldırım',    phone: '+90 559 567 89 01', note: 'Tel takma' },
+
+  // Dr. Fatma Ay — Psikoloji
+  'd3-08:30': { patient: 'Hasan Öztürk',    phone: '+90 505 555 66 77', note: 'Seans — anksiyete' },
+  'd3-09:00': { patient: 'Leyla Güven',     phone: '+90 532 601 70 80', note: 'Seans' },
+  'd3-09:30': { patient: 'Mert Kaplan',     phone: '+90 543 702 81 91', note: 'İlk görüşme' },
+  'd3-10:00': { patient: 'Aslı Yıldız',     phone: '+90 554 803 92 03', note: 'Seans — depresyon' },
+  'd3-10:30': { patient: 'Tolga Çam',       phone: '+90 505 904 03 14', note: 'Takip seansı' },
+  'd3-11:00': { patient: 'Nurseda Demir',   phone: '+90 534 005 14 25', note: 'Seans' },
+  'd3-11:30': { patient: 'Kerem Aktaş',     phone: '+90 545 106 25 36', note: 'Aile terapisi' },
+  'd3-12:00': { patient: 'Didem Karakaya',  phone: '+90 556 207 36 47', note: 'Seans' },
+  'd3-13:00': { patient: 'Uğur Sarıkaya',   phone: '+90 507 308 47 58', note: 'Seans — stres' },
+  'd3-13:30': { patient: 'Rana Güngör',     phone: '+90 538 409 58 69', note: 'Takip seansı' },
+  'd3-14:00': { patient: 'Mustafa Kurt',    phone: '+90 549 510 69 70', note: 'İlk görüşme' },
+  'd3-14:30': { patient: 'Cemre Özer',      phone: '+90 550 611 70 81', note: 'Seans' },
+  'd3-15:00': { patient: 'İbrahim Yıldız',  phone: '+90 501 712 81 92', note: 'Çift terapisi' },
+  'd3-15:30': { patient: 'Hazal Şahin',     phone: '+90 532 813 92 03', note: 'Seans' },
+  'd3-16:00': { patient: 'Ferhat Doğru',    phone: '+90 543 914 03 14', note: 'Takip seansı' },
+  'd3-16:30': { patient: 'Sinem Arslan',    phone: '+90 554 015 14 25', note: 'Seans' },
+  'd3-17:00': { patient: 'Yusuf Koç',       phone: '+90 505 116 25 36', note: 'Kapanış seansı' },
+
+  // Dr. Ali Can — Diyetetik
+  'd4-08:30': { patient: 'Merve Yıldız',    phone: '+90 506 666 77 88', note: 'İlk görüşme' },
+  'd4-09:00': { patient: 'Ozan Karaca',     phone: '+90 533 777 88 99', note: 'Kilo takip' },
+  'd4-09:30': { patient: 'Gül Tekin',       phone: '+90 544 888 99 00', note: 'Diyet planı' },
+  'd4-10:00': { patient: 'Emrah Altın',     phone: '+90 555 999 00 11', note: 'Kontrol' },
+  'd4-10:30': { patient: 'Cansu Kaya',      phone: '+90 506 000 11 22', note: 'Besin intoleransı' },
+  'd4-11:00': { patient: 'Selçuk Çelik',    phone: '+90 537 111 22 33', note: 'Kilo takip' },
+  'd4-11:30': { patient: 'Pelin Güneş',     phone: '+90 548 222 33 44', note: 'Diyet revizyon' },
+  'd4-12:00': { patient: 'Taner Yılmaz',    phone: '+90 559 333 44 55', note: 'İlk görüşme' },
+  'd4-13:00': { patient: 'Filiz Arslan',    phone: '+90 500 444 55 66', note: 'Kontrol' },
+  'd4-13:30': { patient: 'Koray Şahin',     phone: '+90 531 555 66 77', note: 'Diyabet diyeti' },
+  'd4-14:00': { patient: 'Ayşe Kılınç',     phone: '+90 542 666 77 88', note: 'Diyet planı' },
+  'd4-14:30': { patient: 'Serdar Bulut',    phone: '+90 553 777 88 99', note: 'Kilo takip' },
+  'd4-15:00': { patient: 'Özlem Güler',     phone: '+90 504 888 99 00', note: 'Kontrol' },
+  'd4-15:30': { patient: 'Hakan Toprak',    phone: '+90 535 999 00 11', note: 'Sporcu diyeti' },
+  'd4-16:00': { patient: 'Sibel Korkmaz',   phone: '+90 546 000 11 22', note: 'Kilo takip' },
+  'd4-16:30': { patient: 'Burhan Aydın',    phone: '+90 557 111 22 33', note: 'Diyet planı' },
+  'd4-17:00': { patient: 'Naz Yıldırım',    phone: '+90 508 222 33 44', note: 'Kapanış kontrolü' },
 };
 
 const WAITLIST = [
@@ -176,7 +245,11 @@ export default function ReceptionDeskView() {
     setForm(null);
   };
 
-  const removeAppt = (k) => { setAppts(prev => { const n = { ...prev }; delete n[k]; return n; }); setConfirm(null); };
+  const removeAppt = (k) => {
+    setAppts(prev => { const n = { ...prev }; delete n[k]; return n; });
+    setConfirm(null);
+    sendWhatsappMessage();
+  };
 
   const totalAppts = Object.keys(appts).length;
 
