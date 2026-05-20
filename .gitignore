@@ -7,16 +7,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+jspm_packages
+
+# Build outputs
 dist
 dist-ssr
+build
+.svelte-kit
+.next
+.nuxt
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS files
 .DS_Store
+Thumbs.db
+
+# Editor configurations
+.vscode
+.idea
 *.suo
 *.ntvs*
 *.njsproj

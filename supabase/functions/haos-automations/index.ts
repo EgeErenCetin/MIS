@@ -34,7 +34,7 @@ serve(async (req) => {
   // 2. MOCK: AI Document Summary (Triggered on new health_document upload)
   if (eventType === 'INSERT' && record.table === 'health_documents') {
     console.log(`New document uploaded: ${record.id}. Checking consent...`);
-    
+
     // Fetch patient consent
     const { data: patient } = await supabase
       .from('patients')
@@ -46,7 +46,7 @@ serve(async (req) => {
       console.log(`Consent granted. Calling Gemini API...`);
       // MOCK: Call Gemini API using GEMINI_API_KEY
       const mockSummary = "AI Summary generated via Gemini: The results indicate normal levels across all tested parameters.";
-      
+
       // Update document with summary
       await supabase
         .from('health_documents')
