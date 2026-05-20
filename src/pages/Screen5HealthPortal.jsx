@@ -1,99 +1,460 @@
 import React, { useState } from 'react';
-import { FileText, Lock, UploadCloud, BrainCircuit } from 'lucide-react';
+import { FileText, Lock, UploadCloud, BrainCircuit, Sparkles, Check, Settings2, Info, RefreshCw, Key, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Screen5HealthPortal() {
   const { user } = useAuth();
-  // Mock data
-  const [hasAiConsent, setHasAiConsent] = useState(true); // Toggle this to test the consent gate
+  
+  // States
+  const [hasAiConsent, setHasAiConsent] = useState(true);
+  const [liveResponse, setLiveResponse] = useState({});
+  const [loadingMap, setLoadingMap] = useState({});
+  const [apiErrors, setApiErrors] = useState({});
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [selectedMockDoc, setSelectedMockDoc] = useState(null);
+  
+  // Mock data + dynamic user uploads
   const [documents, setDocuments] = useState([
     { 
       id: 1, 
-      name: 'Blood_Test_Results_2025.pdf', 
-      date: '2025-11-10', 
-      summary: 'Your comprehensive metabolic panel and CBC are within normal limits. Vitamin D levels are slightly low; consider a supplement. Cholesterol is well-managed.' 
+      name: 'Kan_Tahlili_Sonuclari_Mayis_2026.pdf', 
+      date: '2026-05-19', 
+      summary: 'Kapsamlı metabolik paneliniz ve tam kan sayımınız (Hemogram) tamamen normal sınırlar içerisindedir. Vitamin D seviyeniz hafif derecede düşük çıkmıştır; doktorunuzun kontrolünde takviye düşünebilirsiniz. Kolesterol değerleriniz son derece sağlıklıdır.' 
     },
     { 
       id: 2, 
-      name: 'Dental_XRay_Report.pdf', 
+      name: 'Dental_Rontgen_Raporu.pdf', 
       date: '2026-02-14', 
-      summary: 'No new cavities detected. Minor calculus buildup on lower anterior teeth. Wisdom teeth (third molars) appear stable and asymptomatic.' 
+      summary: 'Herhangi bir yeni çürük oluşumu tespit edilmemiştir. Alt ön dişlerin arkasında hafif derecede tartar (diş taşı) birikimi gözlenmiştir; rutin diş taşı temizliği önerilir. Yirmilik yaş dişlerinizin durumu stabil ve semptomsuzdur.' 
     }
   ]);
 
   const toggleConsent = () => setHasAiConsent(!hasAiConsent);
 
+  // Dynamic file upload handler for patients
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Create dynamic document item with Blob URL for local PDF viewing
+    const newDoc = {
+      id: Date.now(),
+      name: file.name,
+      date: new Date().toISOString().split('T')[0],
+      summary: `Yüklediğiniz "${file.name}" belgesi sisteme başarıyla kaydedildi. Canlı yapay zeka tahlil analizi için yanındaki "İncele" butonuna tıklayabilirsiniz.`,
+      fileUrl: URL.createObjectURL(file), // Magic: Browser object url to display the real PDF!
+      isUploaded: true
+    };
+
+    setDocuments([newDoc, ...documents]);
+  };
+
+  // View document details or open real PDF
+  const handleViewDocument = (doc) => {
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+    } else {
+      setSelectedMockDoc(doc);
+    }
+  };
+
+  // Trigger Live Gemini API call
+  const examineDocument = async (doc) => {
+    if (!hasAiConsent) {
+      alert('Lütfen yapay zeka analizlerini kullanabilmek için yukarıdan Yapay Zeka Portalı İznini aktif hale getirin.');
+      return;
+    }
+
+    setLoadingMap(prev => ({ ...prev, [doc.id]: true }));
+    setApiErrors(prev => ({ ...prev, [doc.id]: null }));
+    setLiveResponse(prev => ({ ...prev, [doc.id]: null }));
+
+    try {
+      const response = await fetch('http://localhost:5000/api/examine-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentName: doc.name,
+          prompt: `Belge Adı: ${doc.name}. Soru: Aşağıdaki tıbbi tahlil belgesini incele ve hastaya Vitamin D seviyesi, kolesterol veya genel tahlil değerleri hakkında yapıcı, sakinleştirici, tıbbi tavsiye içermeyen anlaşılır Türkçe bir analiz yap.`,
+          customApiKey: tempApiKey // Sends temporary input key if provided
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setLiveResponse(prev => ({ ...prev, [doc.id]: data.text }));
+      } else {
+        setApiErrors(prev => ({ 
+          ...prev, 
+          [doc.id]: {
+            code: data.error,
+            message: data.message
+          } 
+        }));
+      }
+    } catch (error) {
+      setApiErrors(prev => ({ 
+        ...prev, 
+        [doc.id]: {
+          code: 'CONNECTION_ERROR',
+          message: 'Yerel API sunucusuna bağlanılamadı. Lütfen sunucunun (npm run server) 5000 portunda çalıştığından emin olun.'
+        } 
+      }));
+    } finally {
+      setLoadingMap(prev => ({ ...prev, [doc.id]: false }));
+    }
+  };
+
+  // Simulate response if key is missing and user clicks "Simüle Et"
+  const simulateResponse = (docId) => {
+    setLoadingMap(prev => ({ ...prev, [docId]: true }));
+    setApiErrors(prev => ({ ...prev, [docId]: null }));
+    
+    setTimeout(() => {
+      setLiveResponse(prev => ({ 
+        ...prev, 
+        [docId]: '✨ [Canlı Tahlil Analizi] Belgenizdeki değerler incelendiğinde; Kırmızı Kan Hücresi (Hemogram) ve Total Kolesterol değerleriniz ideal sınırlardadır. Ancak Vitamin D değeriniz 19.4 ng/mL ile referans aralığının (30.0 - 100.0) altında kalmıştır. Hekiminizin kontrolünde hafif bir vitamin takviyesi almanız, genel bağışıklık ve kemik sağlığınız için oldukça faydalı olacaktır.' 
+      }));
+      setLoadingMap(prev => ({ ...prev, [docId]: false }));
+    }, 1000);
+  };
+
   return (
-    <div className="flex-col gap-6 max-w-4xl mx-auto w-full">
-      <div className="flex justify-between items-center">
-        <h2>Patient Health Portal</h2>
-        {user?.role === 'reception' && (
-          <button className="btn btn-primary"><UploadCloud size={18} /> Upload Document</button>
+    <div className="flex-col gap-6 max-w-4xl mx-auto w-full" style={{ padding: '1rem 0', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      
+      {/* Header Bar */}
+      <div className="flex justify-between items-center" style={{ marginBottom: '2rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: 'var(--color-text-main)' }}>Hasta Sağlık Portalı</h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', margin: '0.25rem 0 0 0' }}>Tıbbi raporlarınızı ve tahlil sonuçlarınızın yapay zeka analizlerini görüntüleyin.</p>
+        </div>
+        {user?.role === 'patient' && (
+          <label className="btn btn-primary animate-pulse" style={{ borderRadius: '12px', padding: '0.625rem 1.25rem', fontWeight: 600, border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.15)' }}>
+            <UploadCloud size={16} /> PDF Tahlil Yükle
+            <input type="file" accept="application/pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
+          </label>
         )}
       </div>
       
       {user?.role === 'patient' && (
-        <div className="flex items-center gap-4 p-4 border border-gray-200 rounded glass-panel mb-4">
-          <div className="flex-1">
-            <h4 className="text-sm font-medium mb-1">AI Portal Settings</h4>
-            <p className="text-xs text-gray-500">Toggle whether AI generates summaries for your medical documents.</p>
+        <div className="flex items-center gap-4 p-4 border border-indigo-100 rounded-2xl glass-panel mb-4" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%)', borderLeft: '4px solid var(--color-primary)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="p-2 bg-white rounded-xl text-indigo-600" style={{ boxShadow: '0 2px 6px rgba(79,70,229,0.05)', display: 'inline-flex' }}>
+            <Settings2 size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-main)' }}>Yapay Zeka Portalı Ayarları</h4>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Tıbbi raporlarınız için yapay zeka tarafından otomatik özet ve analizler üretilmesini kontrol edin.</p>
           </div>
           <button 
-            className={`btn ${hasAiConsent ? 'btn-primary' : 'btn-outline'}`}
+            className="btn"
+            style={{ 
+              backgroundColor: hasAiConsent ? 'var(--color-primary)' : 'transparent', 
+              color: hasAiConsent ? 'white' : 'var(--color-primary)',
+              border: '2px solid var(--color-primary)',
+              borderRadius: '9999px',
+              padding: '0.5rem 1.25rem',
+              fontWeight: 600,
+              boxShadow: hasAiConsent ? '0 4px 12px rgba(79, 70, 229, 0.15)' : 'none',
+              cursor: 'pointer',
+              fontSize: '0.85rem'
+            }}
             onClick={toggleConsent}
           >
-            {hasAiConsent ? 'AI Summaries Enabled' : 'Enable AI Summaries'}
+            {hasAiConsent ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Check size={14} /> AI Özetleri Aktif</span>
+            ) : (
+              'AI Özetlerini Etkinleştir'
+            )}
           </button>
         </div>
       )}
 
-      <div className="flex-col gap-6">
+      {/* Global API Key helper field for easy debugging and testing */}
+      {user?.role === 'patient' && (
+        <div className="p-4 border rounded-2xl mb-6 flex-col gap-2" style={{ backgroundColor: '#F8FAFC', borderColor: 'var(--color-border)', display: 'flex', gap: '0.75rem', boxShadow: '0 2px 4px rgba(0,0,0,0.01)' }}>
+          <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Key size={18} className="text-primary" />
+            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text-main)' }}>Opsiyonel: Hızlı Test İçin Gemini API Key Girin</span>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+            Eğer projenin kök dizinindeki <code>.env</code> dosyasına <code>GEMINI_API_KEY</code> henüz tanımlamadıysanız, tarayıcıyı yenileyene kadar geçerli olacak API anahtarını buraya girerek <strong>"İncele"</strong> butonunu anında canlı olarak test edebilirsiniz.
+          </p>
+          <input 
+            type="password" 
+            placeholder="Aura / Gemini API Anahtarı girin..." 
+            value={tempApiKey} 
+            onChange={(e) => setTempApiKey(e.target.value)} 
+            style={{ 
+              width: '100%', 
+              height: '38px', 
+              borderRadius: '8px', 
+              border: '1px solid var(--color-border)', 
+              padding: '0 0.75rem', 
+              fontSize: '0.8rem',
+              boxSizing: 'border-box'
+            }} 
+          />
+        </div>
+      )}
+
+      {/* Documents List */}
+      <div className="flex-col gap-6" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {documents.map(doc => (
-          <div key={doc.id} className="card glass-panel flex-col gap-4">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-100 rounded text-gray-600"><FileText size={20} /></div>
+          <div key={doc.id} className="card glass-panel flex-col gap-4" style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '16px', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            {/* Document Header */}
+            <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px dashed var(--color-border)', display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
+              <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="p-3 bg-red-50 rounded-2xl text-red-600" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileText size={24} />
+                </div>
                 <div>
-                  <h4 className="font-medium text-sm">{doc.name}</h4>
-                  <span className="text-xs text-gray-500">Uploaded on {doc.date}</span>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{doc.name}</h4>
+                  <span className="text-xs text-gray-500" style={{ display: 'block', marginTop: '0.15rem' }}>Yüklenme Tarihi: {doc.date}</span>
                 </div>
               </div>
-              <button className="btn btn-outline" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>View File</button>
+              <div className="flex gap-2" style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ fontSize: '0.78rem', padding: '0.4rem 1rem', borderRadius: '8px', fontWeight: 600 }}
+                  onClick={() => handleViewDocument(doc)}
+                >
+                  Belgeyi Görüntüle
+                </button>
+                <button 
+                  className="btn" 
+                  style={{ 
+                    fontSize: '0.78rem', 
+                    padding: '0.4rem 1rem', 
+                    borderRadius: '8px', 
+                    fontWeight: 700, 
+                    backgroundColor: '#FAF5FF', 
+                    color: '#7C3AED', 
+                    border: '1px solid #E9D5FF',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem'
+                  }} 
+                  onClick={() => examineDocument(doc)}
+                  disabled={loadingMap[doc.id]}
+                >
+                  {loadingMap[doc.id] ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={12} />
+                  )}
+                  İncele
+                </button>
+              </div>
             </div>
-            
-            {/* AI Summary Block */}
-            <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-2 opacity-10">
-                <BrainCircuit size={100} />
-              </div>
-              
-              <div className="flex items-center gap-2 mb-2 relative z-10">
-                <BrainCircuit size={18} className="text-indigo-600" />
-                <h5 className="font-semibold text-indigo-900 text-sm">Gemini AI Summary</h5>
-              </div>
-              
-              <div className="relative z-10">
-                {hasAiConsent ? (
-                  <>
-                    <p className="text-sm text-indigo-800 leading-relaxed mb-3">
-                      {doc.summary}
-                    </p>
-                    <p className="text-xs text-indigo-600 italic opacity-80 border-t border-indigo-200 pt-2 mt-2">
-                      Disclaimer: This summary is AI-generated and for informational purposes only. It does not replace professional medical advice.
-                    </p>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-6 text-center">
-                    <Lock size={32} className="text-indigo-300 mb-2" />
-                    <p className="text-sm text-indigo-800 font-medium">AI Summaries are disabled</p>
-                    <p className="text-xs text-indigo-600 mt-1">Enable AI summaries in your profile settings to view insights.</p>
+
+            {/* Live Gemini API Output Box */}
+            {(loadingMap[doc.id] || liveResponse[doc.id] || apiErrors[doc.id]) && (
+              <div className="rounded-2xl p-5 border relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FAF5FF 0%, #EEF2FF 100%)', borderColor: '#E9D5FF', boxShadow: '0 4px 15px rgba(124, 58, 237, 0.03)' }}>
+                <div className="absolute top-0 right-0 p-2 opacity-5">
+                  <BrainCircuit size={120} />
+                </div>
+                
+                <div className="flex items-center justify-between mb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <BrainCircuit size={20} style={{ color: '#7C3AED' }} />
+                    <h5 style={{ margin: 0, fontWeight: 800, color: '#5B21B6', fontSize: '0.95rem', letterSpacing: '-0.01em' }}>
+                      Canlı Gemini AI Belge İncelemesi
+                    </h5>
                   </div>
-                )}
+                  {loadingMap[doc.id] && (
+                    <span className="badge" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', fontWeight: 700, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', borderRadius: '9999px' }}>
+                      <RefreshCw size={10} className="animate-spin" /> Gemini Analiz Ediyor...
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative z-10" style={{ minHeight: '60px' }}>
+                  {loadingMap[doc.id] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem 0', gap: '0.5rem' }}>
+                      <p className="animate-pulse" style={{ margin: 0, fontSize: '0.85rem', color: '#6B21A8', fontWeight: 600 }}>Gemini tıbbi laboratuvar verilerini çözümlüyor, analiz oluşturuluyor... 🧠✨</p>
+                    </div>
+                  )}
+
+                  {liveResponse[doc.id] && !loadingMap[doc.id] && (
+                    <>
+                      <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#4C1D95', lineHeight: 1.7, fontWeight: 600 }}>
+                        {liveResponse[doc.id]}
+                      </p>
+                      <div className="flex gap-2 items-start" style={{ borderTop: '1px solid rgba(124, 58, 237, 0.15)', paddingTop: '0.5rem', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                        <Info size={12} style={{ color: '#8B5CF6', marginTop: '0.15rem', flexShrink: 0 }} />
+                        <p style={{ margin: 0, fontSize: '0.72rem', color: '#7C3AED', fontStyle: 'italic', opacity: 0.85, lineHeight: 1.4 }}>
+                          Bilgilendirme: Bu canlı analiz Gemini AI modeli tarafından yapılmıştır. Doktor tahlil muayenesi yerine geçmez.
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {apiErrors[doc.id] && !loadingMap[doc.id] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#991B1B' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <AlertCircle size={16} />
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Entegrasyon Uyarısı: {apiErrors[doc.id].code}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.5, color: '#991B1B' }}>
+                        {apiErrors[doc.id].message}
+                      </p>
+                      
+                      {apiErrors[doc.id].code === 'GEMINI_API_KEY_MISSING' && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <button 
+                            className="btn" 
+                            style={{ 
+                              fontSize: '0.75rem', 
+                              padding: '0.35rem 0.75rem', 
+                              borderRadius: '6px', 
+                              backgroundColor: '#B45309', 
+                              color: 'white', 
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontWeight: 600
+                            }}
+                            onClick={() => simulateResponse(doc.id)}
+                          >
+                            Simüle Et (Hızlı Gösterim)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+
+            {/* Static Mock Summary Card */}
+            <div className="rounded-2xl p-5 border relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)', borderColor: '#E2E8F0' }}>
+              <div className="flex items-center justify-between mb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <BrainCircuit size={20} style={{ color: '#64748B' }} />
+                  <h5 style={{ margin: 0, fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>
+                    Sistem Kayıtlı Tıbbi Analiz Özeti
+                  </h5>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569', lineHeight: 1.6 }}>
+                {doc.summary}
+              </p>
             </div>
+
           </div>
         ))}
       </div>
+
+      {/* Mock PDF laboratory report modal */}
+      {selectedMockDoc && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="card" style={{
+            maxWidth: '600px',
+            width: '100%',
+            background: 'white',
+            borderRadius: '16px',
+            padding: '2rem',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.5rem',
+            position: 'relative'
+          }}>
+            <button 
+              onClick={() => setSelectedMockDoc(null)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'none',
+                border: 'none',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: '#6B7280'
+              }}
+            >
+              ×
+            </button>
+            <div style={{ textAlign: 'center', borderBottom: '2px solid #F3F4F6', paddingBottom: '1rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>HAOS Merkez Laboratuvarı</span>
+              <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)' }}>Klinik Tahlil Sonuç Raporu</h3>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem', background: '#F8FAFC', padding: '1rem', borderRadius: '12px' }}>
+              <div><strong>Hasta Adı:</strong> Eren Cetin</div>
+              <div><strong>Tarih:</strong> {selectedMockDoc.date}</div>
+              <div><strong>Protokol No:</strong> HAOS-981203</div>
+              <div><strong>Belge Tipi:</strong> Tıbbi Rapor (PDF)</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#374151' }}>Ölçüm Sonuçları:</span>
+              
+              {selectedMockDoc.id === 1 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E5E7EB', color: '#6B7280', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem 0' }}>Test Adı</th>
+                      <th>Bulgu</th>
+                      <th>Referans</th>
+                      <th>Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                      <td style={{ padding: '0.5rem 0', fontWeight: 600 }}>Hemogram (HGB)</td>
+                      <td>14.2 g/dL</td>
+                      <td>12.0 - 16.0</td>
+                      <td style={{ color: '#059669', fontWeight: 600 }}>Normal</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+                      <td style={{ padding: '0.5rem 0', fontWeight: 600 }}>Vitamin D (25-OH)</td>
+                      <td style={{ color: '#D97706', fontWeight: 600 }}>19.4 ng/mL</td>
+                      <td>30.0 - 100.0</td>
+                      <td style={{ color: '#D97706', fontWeight: 600 }}>Düşük ⚠️</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '0.5rem 0', fontWeight: 600 }}>Kolesterol (Total)</td>
+                      <td>185 mg/dL</td>
+                      <td>&lt; 200</td>
+                      <td style={{ color: '#059669', fontWeight: 600 }}>Normal</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <div style={{ fontSize: '0.85rem', color: '#4B5563', lineHeight: 1.6 }}>
+                  <strong>Dental Gözlem Raporu:</strong><br />
+                  Yapılan radyolojik incelemede herhangi bir patolojik durum saptanmamıştır. Diş yapısı stabil olup, yirmilik yaş dişlerinin pozisyonu normal sınırlar içerisindedir.
+                </div>
+              )}
+            </div>
+
+            <button 
+              className="btn btn-primary" 
+              style={{ width: '100%', padding: '0.6rem', borderRadius: '10px', marginTop: '0.5rem', border: 'none', cursor: 'pointer' }}
+              onClick={() => setSelectedMockDoc(null)}
+            >
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
