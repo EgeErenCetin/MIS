@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Screen3PatientRegistration from './pages/Screen3PatientRegistration';
 import Screen6AdminDashboard from './pages/Screen6AdminDashboard';
@@ -14,13 +14,16 @@ import ReceptionDeskView from './pages/ReceptionDeskView';
 const LandingNav = () => {
   const { login } = useAuth();
   return (
-    <header className="flex justify-between items-center" style={{ padding: '1rem 2rem', borderBottom: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 100 }}>
-      <h1 style={{ color: 'var(--color-primary)', fontSize: '1.5rem', letterSpacing: '-0.03em' }}>HAOS</h1>
-      <div className="flex gap-2">
-        <button className="btn btn-outline" onClick={() => login('patient')}>Hasta Girişi</button>
-        <button className="btn btn-primary" onClick={() => login('patient')}>Kayıt Ol</button>
-        <button className="btn btn-outline" style={{ fontSize: '0.75rem' }} onClick={() => login('reception')}>Personel</button>
-        <button className="btn btn-outline" style={{ fontSize: '0.75rem' }} onClick={() => login('admin')}>Admin</button>
+    <header style={{ borderBottom: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div className="flex justify-between items-center" style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem' }}>
+        <h1 style={{ color: 'var(--color-primary)', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>HAOS</h1>
+        <div className="flex items-center" style={{ gap: '0.625rem' }}>
+          <button className="btn btn-outline" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => login('patient')}>Hasta Girişi</button>
+          <button className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => login('patient')}>Kayıt Ol</button>
+          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 0.35rem' }} />
+          <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => login('reception')}>Personel</button>
+          <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => login('admin')}>Admin</button>
+        </div>
       </div>
     </header>
   );
@@ -63,14 +66,42 @@ const AppLayout = ({ children }) => {
   );
 };
 
+/* Default home component based on user role to prevent screen flashing */
+const DefaultHome = () => {
+  const { user } = useAuth();
+  if (user?.role === 'reception') {
+    return <ReceptionDeskView />;
+  }
+  if (user?.role === 'admin') {
+    return <Screen6AdminDashboard />;
+  }
+  return <Screen4AppointmentStatus />;
+};
+
 /* Root component: decides which layout to use */
 const Root = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'reception') {
+        navigate('/daily-schedule');
+      } else if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    } else {
+      navigate('/');
+    }
+  }, [user?.role]);
+
   if (!user) {
     return (
       <>
         <LandingNav />
-        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 1.5rem' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1rem' }}>
           <LandingPage />
         </div>
       </>
@@ -79,7 +110,7 @@ const Root = () => {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<Screen4AppointmentStatus />} />
+        <Route path="/" element={<DefaultHome />} />
         <Route path="/book" element={<Screen1NewAppointment />} />
         <Route path="/waitlist" element={<Screen2WaitlistJoin />} />
         <Route path="/register-patient" element={<Screen3PatientRegistration />} />
