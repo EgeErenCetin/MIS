@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Lock, UploadCloud, BrainCircuit, Sparkles, Check, Settings2, Info, RefreshCw, Key, AlertCircle } from 'lucide-react';
+import { FileText, Lock, UploadCloud, BrainCircuit, Sparkles, Check, Settings2, Info, RefreshCw, Key, AlertCircle, Copy, Printer, CheckCircle2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Screen5HealthPortal() {
@@ -12,6 +12,7 @@ export default function Screen5HealthPortal() {
   const [apiErrors, setApiErrors] = useState({});
   const [tempApiKey, setTempApiKey] = useState('');
   const [selectedMockDoc, setSelectedMockDoc] = useState(null);
+  const [copiedMap, setCopiedMap] = useState({});
   
   // Mock data + dynamic user uploads
   const [documents, setDocuments] = useState([
@@ -36,17 +37,23 @@ export default function Screen5HealthPortal() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Create dynamic document item with Blob URL for local PDF viewing
-    const newDoc = {
-      id: Date.now(),
-      name: file.name,
-      date: new Date().toISOString().split('T')[0],
-      summary: `Yüklediğiniz "${file.name}" belgesi sisteme başarıyla kaydedildi. Canlı yapay zeka tahlil analizi için yanındaki "İncele" butonuna tıklayabilirsiniz.`,
-      fileUrl: URL.createObjectURL(file), // Magic: Browser object url to display the real PDF!
-      isUploaded: true
-    };
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result.split(',')[1];
+      
+      const newDoc = {
+        id: Date.now(),
+        name: file.name,
+        date: new Date().toISOString().split('T')[0],
+        summary: `Yüklediğiniz "${file.name}" belgesi sisteme başarıyla kaydedildi. Canlı yapay zeka tahlil analizi için yanındaki "İncele" butonuna tıklayabilirsiniz.`,
+        fileUrl: URL.createObjectURL(file), // Magic: Browser object url to display the real PDF!
+        base64Data: base64String, // Base64 representation of the uploaded PDF file
+        isUploaded: true
+      };
 
-    setDocuments([newDoc, ...documents]);
+      setDocuments([newDoc, ...documents]);
+    };
+    reader.readAsDataURL(file);
   };
 
   // View document details or open real PDF
@@ -69,13 +76,32 @@ export default function Screen5HealthPortal() {
     setApiErrors(prev => ({ ...prev, [doc.id]: null }));
     setLiveResponse(prev => ({ ...prev, [doc.id]: null }));
 
+    // Prepare simulated text if it is a mock document so Gemini can perform a real live analysis of it!
+    let customPrompt = `Aşağıdaki tıbbi tahlil raporunu detaylıca analiz et. Bulunan değerleri anlaşılır, sakinleştirici, tıbbi bir otorite yerine dostane bir dille hastaya açıkla.
+    Formatlama kuralları:
+    - Sonuçları başlıklar halinde incele (Örn: "### 1. Genel Bulgular", "### 2. Vitamin Değerleri" gibi).
+    - Önemli vurguları ve test isimlerini kalın (**test adı**) yaz.
+    - Düşük olan Vitamin D değerine dikkat çekerek sağlıklı yaşam önerileri sun (Güneşlenme, somon, yumurta vb.).
+    - Sonuna bunun kesinlikle bir resmi tanı olmadığını ve hekime danışılması gerektiğini nazikçe hatırlat. \n\n`;
+
+    if (!doc.isUploaded) {
+      if (doc.id === 1) {
+        customPrompt += `[Tahlil Değerleri]: Hemogram (HGB): 14.2 g/dL (Normal), Vitamin D (25-OH): 19.4 ng/mL (Düşük, Ref: 30-100), Kolesterol Total: 185 mg/dL (Normal).`;
+      } else if (doc.id === 2) {
+        customPrompt += `[Tahlil Değerleri]: Ortodonti Röntgen İncelemesi: Herhangi bir çürük saptanmamıştır, alt ön dişlerde hafif diş taşı (tartar) mevcuttur.`;
+      }
+    } else {
+      customPrompt += `[Tahlil Belgesi]: ${doc.name}`;
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/examine-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           documentName: doc.name,
-          prompt: `Belge Adı: ${doc.name}. Soru: Aşağıdaki tıbbi tahlil belgesini incele ve hastaya Vitamin D seviyesi, kolesterol veya genel tahlil değerleri hakkında yapıcı, sakinleştirici, tıbbi tavsiye içermeyen anlaşılır Türkçe bir analiz yap.`,
+          base64Data: doc.base64Data || null, // Sends real base64 PDF data to Gemini multimodal API!
+          prompt: customPrompt,
           customApiKey: tempApiKey // Sends temporary input key if provided
         })
       });
@@ -114,10 +140,79 @@ export default function Screen5HealthPortal() {
     setTimeout(() => {
       setLiveResponse(prev => ({ 
         ...prev, 
-        [docId]: '✨ [Canlı Tahlil Analizi] Belgenizdeki değerler incelendiğinde; Kırmızı Kan Hücresi (Hemogram) ve Total Kolesterol değerleriniz ideal sınırlardadır. Ancak Vitamin D değeriniz 19.4 ng/mL ile referans aralığının (30.0 - 100.0) altında kalmıştır. Hekiminizin kontrolünde hafif bir vitamin takviyesi almanız, genel bağışıklık ve kemik sağlığınız için oldukça faydalı olacaktır.' 
+        [docId]: `### 1. Genel Bulgular ve Hemogram
+Kapsamlı metabolik tahlilinizde **Hemogram (HGB)** değeriniz **14.2 g/dL** ölçülmüştür. Bu değer sağlıklı referans aralığında (12.0 - 16.0) olup kan değerlerinizin son derece güçlü olduğunu göstermektedir.
+Total **Kolesterol** değeriniz ise **185 mg/dL** ile ideal sınır olan 200 mg/dL'nin altında kalmış, kalp ve damar sağlığınız için mükemmel bir seviyededir.
+
+### 2. Vitamin Seviyeleri ve Vitamin D Uyarısı
+Tahlilinizde dikkat çeken tek bulgu **Vitamin D (25-OH)** seviyenizin **19.4 ng/mL** çıkmasıdır. Sağlıklı bir bağışıklık ve kemik metabolizması için bu değerin **30.0 - 100.0 ng/mL** arasında olması önerilir. Değeriniz normal sınırların biraz altında kalmıştır.
+
+### 3. Sağlıklı Yaşam Önerilerimiz
+* **Güneş Işığı**: Her gün düzenli olarak 15-20 dakika cildinizi doğrudan güneş ışığıyla buluşturmaya özen gösterin.
+* **Beslenme Düzeni**: Somon, ton balığı gibi yağlı balıklar, yumurta sarısı ve Vitamin D ile zenginleştirilmiş gıdaları öğünlerinize ekleyin.
+* **Hekim Kontrolü**: Hekiminizin uygun göreceği dozda Vitamin D3 damla veya takviyesi kullanmanız bu eksikliği hızlıca giderecektir.
+
+*Bilgilendirme: Bu analiz tamamen yapay zeka yardımıyla hazırlanmış olup, kesinlikle resmi bir tıbbi tanı veya tedavi planı değildir. En doğru yönlendirme için lütfen klinik doktorunuza danışınız.*` 
       }));
       setLoadingMap(prev => ({ ...prev, [docId]: false }));
     }, 1000);
+  };
+
+  // Format Markdown-like output into highly styled and responsive React Elements
+  const formatAiResponse = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      let trimmed = line.trim();
+      if (!trimmed) return <div key={index} style={{ height: '0.75rem' }} />;
+      
+      // Section Headers
+      if (trimmed.startsWith('###') || trimmed.startsWith('##') || trimmed.startsWith('#')) {
+        const cleanText = trimmed.replace(/#/g, '').trim().replace(/\*\*/g, '');
+        return (
+          <h4 key={index} style={{ fontSize: '1.05rem', fontWeight: 800, color: '#4C1D95', margin: '1.5rem 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ width: '4px', height: '14px', backgroundColor: '#8B5CF6', borderRadius: '4px', display: 'inline-block' }} />
+            {cleanText}
+          </h4>
+        );
+      }
+      
+      // Bullet list items
+      if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+        let cleanText = trimmed.substring(1).trim();
+        const parts = cleanText.split('**');
+        return (
+          <div key={index} style={{ display: 'flex', gap: '0.5rem', margin: '0.4rem 0 0.4rem 1.25rem', alignItems: 'start', fontSize: '0.875rem', lineHeight: 1.6, color: '#4B5563' }}>
+            <span style={{ color: '#8B5CF6', marginTop: '0.45rem', fontSize: '0.55rem' }}>●</span>
+            <span>
+              {parts.map((part, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} style={{ color: '#4C1D95', fontWeight: 700 }}>{part}</strong> : part)}
+            </span>
+          </div>
+        );
+      }
+      
+      // Ordinary text paragraphs with inline bold styling
+      const parts = trimmed.split('**');
+      return (
+        <p key={index} style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#4B5563', lineHeight: 1.75 }}>
+          {parts.map((part, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} style={{ color: '#312E81', fontWeight: 700 }}>{part}</strong> : part)}
+        </p>
+      );
+    });
+  };
+
+  // Copy Analysis to clipboard
+  const handleCopyReport = (docId, text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMap(prev => ({ ...prev, [docId]: true }));
+    setTimeout(() => {
+      setCopiedMap(prev => ({ ...prev, [docId]: false }));
+    }, 2000);
+  };
+
+  // Print single analysis report card
+  const handlePrintReport = (docName) => {
+    window.print();
   };
 
   return (
@@ -204,7 +299,7 @@ export default function Screen5HealthPortal() {
           <div key={doc.id} className="card glass-panel flex-col gap-4" style={{ padding: '1.5rem', border: '1px solid var(--color-border)', borderRadius: '16px', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             
             {/* Document Header */}
-            <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px dashed var(--color-border)', display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
+            <div className="flex items-center justify-between pb-4" style={{ borderBottom: '1px dashed var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div className="p-3 bg-red-50 rounded-2xl text-red-600" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FileText size={24} />
@@ -257,39 +352,107 @@ export default function Screen5HealthPortal() {
                   <BrainCircuit size={120} />
                 </div>
                 
-                <div className="flex items-center justify-between mb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div className="flex items-center justify-between mb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(124, 58, 237, 0.1)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
                   <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <BrainCircuit size={20} style={{ color: '#7C3AED' }} />
                     <h5 style={{ margin: 0, fontWeight: 800, color: '#5B21B6', fontSize: '0.95rem', letterSpacing: '-0.01em' }}>
-                      Canlı Gemini AI Belge İncelemesi
+                      Canlı Gemini AI Belge Analiz Raporu
                     </h5>
                   </div>
                   {loadingMap[doc.id] && (
-                    <span className="badge" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', fontWeight: 700, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', borderRadius: '9999px' }}>
+                    <span className="badge" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', fontWeight: 700, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', borderRadius: '9999px' }}>
                       <RefreshCw size={10} className="animate-spin" /> Gemini Analiz Ediyor...
+                    </span>
+                  )}
+                  {liveResponse[doc.id] && !loadingMap[doc.id] && (
+                    <span className="badge" style={{ backgroundColor: '#ECFDF5', color: '#059669', fontWeight: 700, fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', borderRadius: '9999px', border: '1px solid #A7F3D0' }}>
+                      <CheckCircle2 size={10} /> Başarılı
                     </span>
                   )}
                 </div>
 
                 <div className="relative z-10" style={{ minHeight: '60px' }}>
                   {loadingMap[doc.id] && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1rem 0', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem 0', gap: '0.75rem' }}>
                       <p className="animate-pulse" style={{ margin: 0, fontSize: '0.85rem', color: '#6B21A8', fontWeight: 600 }}>Gemini tıbbi laboratuvar verilerini çözümlüyor, analiz oluşturuluyor... 🧠✨</p>
                     </div>
                   )}
 
                   {liveResponse[doc.id] && !loadingMap[doc.id] && (
-                    <>
-                      <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#4C1D95', lineHeight: 1.7, fontWeight: 600 }}>
-                        {liveResponse[doc.id]}
-                      </p>
-                      <div className="flex gap-2 items-start" style={{ borderTop: '1px solid rgba(124, 58, 237, 0.15)', paddingTop: '0.5rem', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                        <Info size={12} style={{ color: '#8B5CF6', marginTop: '0.15rem', flexShrink: 0 }} />
-                        <p style={{ margin: 0, fontSize: '0.72rem', color: '#7C3AED', fontStyle: 'italic', opacity: 0.85, lineHeight: 1.4 }}>
-                          Bilgilendirme: Bu canlı analiz Gemini AI modeli tarafından yapılmıştır. Doktor tahlil muayenesi yerine geçmez.
-                        </p>
+                    <div style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '14px', border: '1px solid rgba(124, 58, 237, 0.15)', boxShadow: '0 2px 8px rgba(0,0,0,0.01)', marginBottom: '1rem' }}>
+                      
+                      {/* Clinical Stamp watermark overlay */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '2px solid #F3F4F6', paddingBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#8B5CF6' }}>
+                          <Heart size={14} className="fill-current text-primary" />
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>HAOS Tıbbi Yapay Zeka Raporu</span>
+                        </div>
+                        <span style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 500 }}>
+                          ID: #{doc.id.toString().substring(0, 6)}
+                        </span>
                       </div>
-                    </>
+
+                      {/* Render beautiful parsed markdown list and sections */}
+                      <div className="ai-report-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {formatAiResponse(liveResponse[doc.id])}
+                      </div>
+
+                      {/* Print and Copy Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px dashed #E5E7EB', paddingTop: '1rem' }}>
+                        <button 
+                          onClick={() => handleCopyReport(doc.id, liveResponse[doc.id])}
+                          style={{
+                            background: '#F9FAFB',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            padding: '0.4rem 0.85rem',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: '#4B5563',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            transition: 'all 0.2s'
+                          }}
+                          className="btn-hover-gray"
+                        >
+                          {copiedMap[doc.id] ? <Check size={12} style={{ color: '#059669' }} /> : <Copy size={12} />}
+                          {copiedMap[doc.id] ? 'Kopyalandı!' : 'Metni Kopyala'}
+                        </button>
+                        <button 
+                          onClick={() => handlePrintReport(doc.name)}
+                          style={{
+                            background: '#F9FAFB',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            padding: '0.4rem 0.85rem',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: '#4B5563',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            transition: 'all 0.2s'
+                          }}
+                          className="btn-hover-gray"
+                        >
+                          <Printer size={12} />
+                          Yazdır / Kaydet
+                        </button>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {liveResponse[doc.id] && !loadingMap[doc.id] && (
+                    <div className="flex gap-2 items-start" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <Info size={12} style={{ color: '#8B5CF6', marginTop: '0.15rem', flexShrink: 0 }} />
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#7C3AED', fontStyle: 'italic', opacity: 0.85, lineHeight: 1.4 }}>
+                        Bilgilendirme: Bu analiz tamamen yapay zeka yardımıyla otomatik hazırlanmıştır. Kesinlikle bir doktor tahlil muayenesi veya teşhis kararı yerine geçmez.
+                      </p>
+                    </div>
                   )}
 
                   {apiErrors[doc.id] && !loadingMap[doc.id] && (

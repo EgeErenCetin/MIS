@@ -26,7 +26,7 @@ app.post('/api/send-whatsapp', (req, res) => {
 
 // Gemini AI Document Examination Endpoint
 app.post('/api/examine-document', async (req, res) => {
-    const { documentName, prompt, customApiKey } = req.body;
+    const { documentName, prompt, customApiKey, base64Data } = req.body;
     const apiKey = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY' || apiKey.trim() === '') {
@@ -41,6 +41,20 @@ app.post('/api/examine-document', async (req, res) => {
         // Use gemini-2.5-flash as it is the most stable and modern flash model
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
+        const parts = [];
+        parts.push({
+            text: prompt || `Belge Adı: ${documentName}. Soru: Bu tahlili tıbbi terimleri açıklayarak hastaya özetle.`
+        });
+
+        if (base64Data) {
+            parts.push({
+                inlineData: {
+                    mimeType: 'application/pdf',
+                    data: base64Data
+                }
+            });
+        }
+
         const response = await fetch(geminiUrl, {
             method: 'POST',
             headers: {
@@ -49,11 +63,7 @@ app.post('/api/examine-document', async (req, res) => {
             body: JSON.stringify({
                 contents: [
                     {
-                        parts: [
-                            {
-                                text: prompt || `Belge Adı: ${documentName}. Soru: Nasılsın`
-                            }
-                        ]
+                        parts: parts
                     }
                 ]
             })
