@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Plus, Sparkles, HeartPulse, Settings, LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -14,22 +14,153 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import SupportPage from './pages/SupportPage';
 
+/* ─── Login Modal ─────────────────────────────────────────────────────────── */
+const CORRECT_PASSWORD = import.meta.env.VITE_AUTH_PASSWORD;
+
+const roleLabels = {
+  patient: 'Hasta',
+  reception: 'Personel',
+  admin: 'Admin',
+};
+
+const LoginModal = ({ role, onClose, onSuccess }) => {
+  const [pw, setPw] = useState('');
+  const [error, setError] = useState('');
+  const [shake, setShake] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pw === CORRECT_PASSWORD) {
+      onSuccess(role);
+    } else {
+      setError('Şifre hatalı. Lütfen tekrar deneyin.');
+      setShake(true);
+      setPw('');
+      setTimeout(() => setShake(false), 500);
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#fff', borderRadius: '20px', padding: '2.5rem 2rem',
+          width: '100%', maxWidth: '380px', boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+          animation: shake ? 'shake 0.4s ease' : 'fadeInUp 0.25s ease',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%',
+            background: 'linear-gradient(135deg,#4F46E5,#0EA5E9)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 1rem',
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>🔒</span>
+          </div>
+          <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.3rem', color: '#111' }}>
+            {roleLabels[role]} Girişi
+          </h2>
+          <p style={{ margin: '0.4rem 0 0', color: '#6B7280', fontSize: '0.875rem' }}>
+            Devam etmek için şifrenizi girin
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            autoFocus
+            type="password"
+            placeholder="Şifre"
+            value={pw}
+            onChange={e => { setPw(e.target.value); setError(''); }}
+            style={{
+              width: '100%', padding: '0.75rem 1rem', borderRadius: '12px',
+              border: error ? '2px solid #EF4444' : '2px solid #E5E7EB',
+              fontSize: '1rem', outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.2s',
+            }}
+          />
+          {error && (
+            <p style={{ color: '#EF4444', fontSize: '0.8rem', marginTop: '0.5rem', textAlign: 'center' }}>
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            style={{
+              marginTop: '1.25rem', width: '100%', padding: '0.85rem',
+              borderRadius: '12px', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg,#4F46E5,#0EA5E9)',
+              color: '#fff', fontWeight: 700, fontSize: '1rem',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseOver={e => e.target.style.opacity = '0.88'}
+            onMouseOut={e => e.target.style.opacity = '1'}
+          >
+            Giriş Yap
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              marginTop: '0.75rem', width: '100%', padding: '0.6rem',
+              borderRadius: '12px', border: 'none', cursor: 'pointer',
+              background: 'transparent', color: '#6B7280', fontSize: '0.875rem',
+            }}
+          >
+            İptal
+          </button>
+        </form>
+
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%,60%  { transform: translateX(-8px); }
+            40%,80%  { transform: translateX(8px); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+};
+
 /* Navbar shown on the landing page (not logged in) */
 const LandingNav = () => {
   const { login } = useAuth();
+  const [modal, setModal] = useState(null); // role string or null
+
+  const openModal = (role) => setModal(role);
+  const closeModal = () => setModal(null);
+  const handleSuccess = (role) => { login(role); closeModal(); };
+
   return (
-    <header style={{ borderBottom: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 100 }}>
-      <div className="flex justify-between items-center" style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem' }}>
-        <h1 style={{ color: 'var(--color-primary)', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>HAOS</h1>
-        <div className="flex items-center" style={{ gap: '0.625rem' }}>
-          <button className="btn btn-outline" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => login('patient')}>Hasta Girişi</button>
-          <button className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => login('patient')}>Kayıt Ol</button>
-          <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 0.35rem' }} />
-          <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => login('reception')}>Personel</button>
-          <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => login('admin')}>Admin</button>
+    <>
+      <header style={{ borderBottom: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div className="flex justify-between items-center" style={{ maxWidth: '1280px', margin: '0 auto', padding: '1rem' }}>
+          <h1 style={{ color: 'var(--color-primary)', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>HAOS</h1>
+          <div className="flex items-center" style={{ gap: '0.625rem' }}>
+            <button className="btn btn-outline" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => openModal('patient')}>Hasta Girişi</button>
+            <button className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)', padding: '0.5rem 1.25rem', fontWeight: 600 }} onClick={() => openModal('patient')}>Kayıt Ol</button>
+            <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', margin: '0 0.35rem' }} />
+            <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => openModal('reception')}>Personel</button>
+            <button className="btn btn-outline" style={{ fontSize: '0.8rem', borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', borderStyle: 'dashed' }} onClick={() => openModal('admin')}>Admin</button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {modal && <LoginModal role={modal} onClose={closeModal} onSuccess={handleSuccess} />}
+    </>
   );
 };
 
