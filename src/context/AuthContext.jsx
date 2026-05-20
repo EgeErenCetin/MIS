@@ -3,12 +3,8 @@ import React, { createContext, useContext, useState } from 'react';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Mock user for UI development: roles can be 'patient', 'reception', or 'admin'
-  const [user, setUser] = useState({
-    id: '123',
-    name: 'Test User',
-    role: 'reception', // Change this to test different views
-  });
+  // Start unauthenticated so the landing page is shown on first load
+  const [user, setUser] = useState(null);
 
   const login = (role) => {
     setUser({ id: '123', name: 'Test User', role });
